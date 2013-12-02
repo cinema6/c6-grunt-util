@@ -8,66 +8,91 @@
 
 'use strict';
 
-var tmp = require('temporary');
-
 module.exports = function(grunt) {
-    grunt.loadNpmTasks('grunt-cachebuster');
+    var Q = require('q'),
+        crypto = require('crypto');
 
     grunt.registerMultiTask('versionator', 'Plugin to rename files to include their MD5 hash and generate a JSON file mapping the original name to the versioned one.', function() {
-        var files = this.files,
-            cwDir = this.data.cwd ? (this.data.cwd + '/') : '',
-            destDir = this.data.dest ? (this.data.dest + '/') : '',
-            tmpDir = new tmp.Dir(),
-            tmpMap = tmpDir.path + '/map.json',
-            map = {},
+        var done = this.async(),
             options = this.options({
-                map: destDir + 'map.json'
+                createSetsWith: function(src) { return src; }
             }),
-            md5s;
+            files = this.files;
 
-        grunt.registerTask('versionator-modify', function() {
-            var count = 0;
+        function buildMap() {
+            var map = {};
 
-            md5s = grunt.file.readJSON(tmpMap);
+            grunt.log.subhead('Finding Sets');
 
-            files.forEach(function(file) {
-                var src = file.src[0],
-                    dest = (function() {
-                        var unprocessedDest = file.dest,
-                            modifier = md5s[src] ? ('.' + md5s[src]) : '';
+            files.forEach(function(group) {
+                var dest = group.dest,
+                    src = group.src[0],
+                    setSrc = options.createSetsWith(src),
+                    entry;
 
-                        return [
-                            unprocessedDest.slice(0, unprocessedDest.lastIndexOf('.')),
-                            modifier,
-                            unprocessedDest.slice(unprocessedDest.lastIndexOf('.'))
-                        ].join('');
-                    }()),
-                    matchCwDir = new RegExp('^' + cwDir),
-                    matchDestDir = new RegExp('^' + destDir),
-                    mapKey = src.replace(matchCwDir, ''),
-                    mapValue = dest.replace(matchDestDir, '');
-
-                if (grunt.file.isFile(src)) {
-                    grunt.file.copy(src, dest);
-                    map[mapKey] = mapValue;
-                    count++;
+                if (group.src.length > 1) {
+                    throw new RangeError('Multiple sources cannot map to one destination.');
                 }
+
+                if (!grunt.file.isFile(src)) {
+                    return;
+                }
+
+                if (!map[setSrc]) {
+                    grunt.log.ok('Found new set: ' + setSrc);
+                    map[setSrc] = {
+                        dests: [],
+                        srcs: [],
+                        hash: crypto.createHash('md5')
+                    };
+                }
+
+                entry = map[setSrc];
+
+                entry.dests.push(dest);
+                entry.srcs.push(src);
+                entry.hash.update(grunt.file.read(src, { encoding: null }));
             });
 
-            grunt.log.oklns('Modified ' + count + ' files.');
+            return map;
+        }
 
-            grunt.file.write(options.map, JSON.stringify(map, null, '    '));
-            grunt.log.oklns('Wrote map file to ' + options.map + '.');
-        });
+        function writeFingerprints(map) {
+            var entry, md5;
 
-        grunt.config('cachebuster', {
-            versionator: {
-                src: files.map(function(file) { return file.src; }),
-                dest: tmpMap
+            grunt.log.subhead('Copying Files');
+
+            function copyFile(dest, index) {
+                var fingerprintedDest = [
+                        dest.slice(0, dest.lastIndexOf('.')),
+                        ('.' + md5),
+                        dest.slice(dest.lastIndexOf('.'))
+                    ].join(''),
+                    src = entry.srcs[index];
+
+                grunt.file.copy(src, fingerprintedDest);
+
+                grunt.log.ok('Copied file: ' + fingerprintedDest);
             }
-        });
 
-        grunt.task.run('cachebuster:versionator');
-        grunt.task.run('versionator-modify');
+            for (var setSrc in map) {
+                entry = map[setSrc];
+                md5 = entry.hash.digest('hex');
+
+                if (entry.srcs.length !== entry.dests.length) {
+                    throw new RangeError('Something went wrong. The "' + setSrc + '" set has a different number of srcs and dests.');
+                }
+
+                entry.dests.forEach(copyFile);
+            }
+        }
+
+        function handleError(error) {
+            grunt.log.error(error);
+        }
+
+        Q.all(buildMap())
+            .then(writeFingerprints)
+            .then(done, handleError);
     });
 };

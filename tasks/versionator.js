@@ -15,7 +15,10 @@ module.exports = function(grunt) {
     grunt.registerMultiTask('versionator', 'Plugin to rename files to include their MD5 hash and generate a JSON file mapping the original name to the versioned one.', function() {
         var done = this.async(),
             options = this.options({
-                createSetsWith: function(src) { return src; }
+                createSetsWith: function(src) { return src; },
+                insertAtIndex: function(src) {
+                    return src.lastIndexOf('.');
+                }
             }),
             files = this.files;
 
@@ -63,10 +66,11 @@ module.exports = function(grunt) {
             grunt.log.subhead('Copying Files');
 
             function copyFile(dest, index) {
-                var fingerprintedDest = [
-                        dest.slice(0, dest.lastIndexOf('.')),
+                var insertionIndex = options.insertAtIndex(dest),
+                    fingerprintedDest = [
+                        dest.slice(0, insertionIndex),
                         ('.' + md5),
-                        dest.slice(dest.lastIndexOf('.'))
+                        dest.slice(insertionIndex)
                     ].join(''),
                     src = entry.srcs[index];
 

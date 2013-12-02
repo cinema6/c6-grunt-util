@@ -15,8 +15,8 @@ module.exports = function(grunt) {
     grunt.registerMultiTask('versionator', 'Plugin to rename files to include their MD5 hash and generate a JSON file mapping the original name to the versioned one.', function() {
         var done = this.async(),
             options = this.options({
-                createSetsWith: function(src) { return src; },
-                insertAtIndex: function(src) {
+                createSets: function(src) { return src; },
+                insertBefore: function(src) {
                     return src.lastIndexOf('.');
                 }
             }),
@@ -30,7 +30,12 @@ module.exports = function(grunt) {
             files.forEach(function(group) {
                 var dest = group.dest,
                     src = group.src[0],
-                    setSrc = options.createSetsWith(src),
+                    createSetsWith = (options.createSets instanceof Array) ? function(src) {
+                        var config = options.createSets;
+
+                        return src.replace(config[0], config[1]);
+                    } : options.createSets,
+                    setSrc = createSetsWith(src),
                     entry;
 
                 if (group.src.length > 1) {
@@ -66,7 +71,11 @@ module.exports = function(grunt) {
             grunt.log.subhead('Copying Files');
 
             function copyFile(dest, index) {
-                var insertionIndex = options.insertAtIndex(dest),
+                var insertionIndex = (typeof options.insertBefore === 'function') ? options.insertBefore(dest) : (function(src) {
+                        var indexOfPattern = src.search(options.insertBefore);
+
+                        return (indexOfPattern > -1) ? indexOfPattern : src.lastIndexOf('.');
+                    }(dest)),
                     fingerprintedDest = [
                         dest.slice(0, insertionIndex),
                         ('.' + md5),

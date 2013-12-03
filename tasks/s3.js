@@ -41,7 +41,7 @@
                     files.forEach(function(file) {
                         var contents = grunt.file.isFile(file) ? grunt.file.read(file, { encoding: null }) : null,
                             key = (function(file) {
-                                var destIsDir = (dest.substr(dest.length - 1) === '/');
+                                var destIsDir = ((dest === '') || (dest.substr(dest.length - 1) === '/'));
 
                                 if (contents && file.indexOf(rel) !== 0) {
                                     throw new Error('The rel property (' + rel + ') is not a base!');

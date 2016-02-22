@@ -2,9 +2,7 @@
 
 var AWS = require('aws-sdk');
 var Q = require('q');
-var cloudFormation = new AWS.CloudFormation({
-    region: 'us-east-1'
-});
+var path = require('path');
 
 var CREATE_WAIT_TIME = 60000;
 var CREATING_STATUS = 'CREATE_IN_PROGRESS';
@@ -18,6 +16,14 @@ var STATUSES = [
 ];
 
 module.exports = function(grunt) {
+    var cloudFormation;
+    
+    function initCloudFormation(auth, region) {
+        AWS.config.loadFromPath(auth);
+        AWS.config.update({ region: region });
+        cloudFormation = new AWS.CloudFormation();
+    }
+    
     function createStack(stack, templateUrl, tags) {
         return Q.Promise(function(resolve, reject) {
             cloudFormation.createStack({
@@ -104,12 +110,15 @@ module.exports = function(grunt) {
             
     grunt.registerTask('cloudformation:create', 'creates a CloudFormation stack', function() {
         var done = this.async();
-        var target = this.target;
 
+        var auth = grunt.option('awsAuth') || path.join(process.env.HOME,'.aws.json');
         var createWaitTime = grunt.option('createWaitTime') || CREATE_WAIT_TIME;
+        var region = grunt.option('region') || 'us-east-1';
         var stackName = grunt.option('stackName');
         var tags = JSON.parse(grunt.option('tags') || '[]');
         var template = grunt.option('template');
+
+        initCloudFormation(auth, region);
 
         if(!stackName || !template) {
             grunt.log.writeln('Must specify `stackName` and `template` options.');
@@ -126,10 +135,13 @@ module.exports = function(grunt) {
 
     grunt.registerTask('cloudformation:destroy', 'deletes a CloudFormation stack', function() {
         var done = this.async();
-        var target = this.target;
 
+        var auth = grunt.option('awsAuth') || path.join(process.env.HOME,'.aws.json');
+        var region = grunt.option('region') || 'us-east-1';
         var stackName = grunt.option('stackName');
         var deleteWaitTime = grunt.option('deleteWaitTime') || DELETE_WAIT_TIME;
+
+        initCloudFormation(auth, region);
 
         if(!stackName) {
             grunt.log.writeln('Must specify `stackName` option.');

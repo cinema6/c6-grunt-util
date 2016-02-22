@@ -40,7 +40,7 @@
     "gruntplugin"
   ],
   "dependencies": {
-    "q": "~0.9.7",
+    "q": "^1.4.1",
     "aws-sdk": "~1.13.0",
     "mime": "~1.2.11"
   },

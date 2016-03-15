@@ -12,14 +12,6 @@ module.exports = function(grunt) {
     var autoscaling;
     var ssm;
 
-    // Initializes required AWS Objects
-    function initAWS(auth, region) {
-        AWS.config.loadFromPath(auth);
-        AWS.config.update({ region: region });
-        autoscaling = new AWS.AutoScaling();
-        ssm = new AWS.SSM();
-    }
-
     // Get array of instance ids in an autoscaling group
     function getInstanceIds(group) {
         return Q.Promise(function(resolve, reject) {
@@ -92,7 +84,7 @@ module.exports = function(grunt) {
     grunt.registerTask('runcommand', 'runs an EC2 runcommand against an instance or autoscaling group', function() {
         var done = this.async();
 
-        var auth = grunt.option('awsAuth') || path.join(process.env.HOME,'.aws.json');
+        var awsFileAuth = grunt.option('awsFileAuth');
         var autoscalingGroup = grunt.option('autoscaling');
         var command = grunt.option('command');
         var comment = grunt.option('comment') || '';
@@ -100,20 +92,30 @@ module.exports = function(grunt) {
         var region = grunt.option('region') || 'us-east-1';
         var timeout = grunt.option('execTimeout') || 30000;
 
-        initAWS(auth, region);
-
+        // Ensure command specified
         if(!command) {
             grunt.log.writeln('Must specify a command to run.');
             done(false);
             return;
         }
         
+        // Ensure at least one instance specified
         if(!autoscalingGroup && !instanceList) {
             grunt.log.writeln('Must specify `autoscaling` or `instances` options.');
             done(false);
             return;
         }
         
+        // Initialize AWS
+        if(awsFileAuth) {
+            var authFile = path.join(process.env.HOME,'.aws.json');
+            AWS.config.loadFromPath(authFile);
+        }
+        AWS.config.update({ region: region });
+        autoscaling = new AWS.AutoScaling();
+        ssm = new AWS.SSM();
+
+        // Run the command
         var instances = [];
         if(instanceList) {
             instances.concat(instanceList.split(','));

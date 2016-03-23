@@ -24,12 +24,13 @@ module.exports = function(grunt) {
         cloudFormation = new AWS.CloudFormation();
     }
     
-    function createStack(stack, templateUrl, tags) {
+    function createStack(stack, templateUrl, tags, rollback) {
         return Q.Promise(function(resolve, reject) {
             cloudFormation.createStack({
                 StackName: stack,
                 TemplateURL: templateUrl,
-                Tags: tags
+                Tags: tags,
+                DisableRollback: !rollback
             }, function(error, data) {
                 if(error) {
                     reject(error);
@@ -114,9 +115,12 @@ module.exports = function(grunt) {
         var auth = grunt.option('awsAuth') || path.join(process.env.HOME,'.aws.json');
         var createWaitTime = grunt.option('createWaitTime') || CREATE_WAIT_TIME;
         var region = grunt.option('region') || 'us-east-1';
+        var rollbackOption = grunt.option('rollback');
         var stackName = grunt.option('stackName');
         var tags = JSON.parse(grunt.option('tags') || '[]');
         var template = grunt.option('template');
+
+        var rollback = (rollbackOption === undefined) ? true : rollbackOption;
 
         initCloudFormation(auth, region);
 
@@ -125,7 +129,7 @@ module.exports = function(grunt) {
             done(false);
         }
         
-        createStack(stackName, template, tags).then(function() {
+        createStack(stackName, template, tags, rollback).then(function() {
             return ensureStackCreated(stackName, createWaitTime);
         }).then(done).catch(function(error) {
             grunt.log.error(error);

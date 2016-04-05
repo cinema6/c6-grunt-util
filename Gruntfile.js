@@ -10,6 +10,17 @@
 
 module.exports = function(grunt) {
 
+    var watchmanUser = process.env.WATCHMAN_USER || process.env.USER || 'anon';
+    var baseStreamNames = [
+        'devTimeStream',
+        'devWatchmanStream',
+        'devCwrxStream'];
+    var baseTableNames = [
+        'devTimeStreamApplication',
+        'devWatchmanStreamApplication',
+        'devCwrxStreamApplication'
+    ];
+
   // Project configuration.
   grunt.initConfig({
     jshint: {
@@ -53,6 +64,20 @@ module.exports = function(grunt) {
       tests: ['test/*_test.js'],
     },
 
+    // creating/destorying kinesis streams
+    streams: {
+      options: {
+        waitTime: 5000,
+        streams: baseStreamNames.map(function(name) {
+            return name + '-' + watchmanUser;
+        }),
+        tables: baseTableNames.map(function(name) {
+            return name + '-' + watchmanUser;
+        })
+      },
+      create: { },
+      destroy: { }
+    }
   });
 
   // Actually load this plugin's task(s).

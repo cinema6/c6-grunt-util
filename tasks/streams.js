@@ -3,8 +3,11 @@
 
 var AWS = require('aws-sdk');
 var Q = require('q');
+var path = require('path');
 
 module.exports = function(grunt) {
+    var auth = grunt.option('awsAuth') || path.join(process.env.HOME, '.aws.json');
+    AWS.config.loadFromPath(auth);
     var kinesis = new AWS.Kinesis({region : 'us-east-1'});
     var dynamo = new AWS.DynamoDB({region : 'us-east-1'});
 

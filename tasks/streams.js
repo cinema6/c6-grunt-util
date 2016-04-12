@@ -103,7 +103,7 @@ module.exports = function(grunt) {
                 if(!active) {
                     return Q.Promise(function(resolve, reject) {
                         setTimeout(function() {
-                            waitForActiveStream(streamName).then(resolve, reject);
+                            waitForActiveStream(streamName, waitTime).then(resolve, reject);
                         }, waitTime);
                     });
                 }
@@ -116,7 +116,7 @@ module.exports = function(grunt) {
             if(exists) {
                 return Q.Promise(function(resolve, reject) {
                     setTimeout(function() {
-                        ensureStreamDeleted(streamName).then(resolve, reject);
+                        ensureStreamDeleted(streamName, waitTime).then(resolve, reject);
                     }, waitTime);
                 });
             }

@@ -4,7 +4,7 @@ var AWS = require('aws-sdk');
 var Q = require('q');
 var path = require('path');
 
-var CHECK_STATUS_WAIT = 5000
+var CHECK_STATUS_WAIT = 5000;
 var IN_PROGRESS_STAUSES = ['Pending', 'InProgress', 'Cancelling'];
 var SUCCESS_STATUS = 'Success';
 

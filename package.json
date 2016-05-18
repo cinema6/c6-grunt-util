@@ -1,7 +1,7 @@
 {
   "name": "grunt-c6-util",
   "description": "Grab bag of helpful grunt tasks.",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "homepage": "https://github.com/cinema6/c6-grunt-util",
   "author": {
     "name": "Cinema6",

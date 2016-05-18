@@ -6,10 +6,15 @@ var Q = require('q');
 var path = require('path');
 
 module.exports = function(grunt) {
-    var auth = grunt.option('awsAuth') || path.join(process.env.HOME, '.aws.json');
-    AWS.config.loadFromPath(auth);
-    var kinesis = new AWS.Kinesis({region : 'us-east-1'});
-    var dynamo = new AWS.DynamoDB({region : 'us-east-1'});
+    var kinesis;
+    var dynamo;
+
+    function initAWS(auth, region) {
+        AWS.config.loadFromPath(auth);
+        AWS.config.update({ region: region });
+        kinesis = new AWS.Kinesis();
+        dynamo = new AWS.DynamoDB();
+    }
 
     function createStream(streamName, numShards) {
         return Q.Promise(function(resolve, reject) {
@@ -158,7 +163,7 @@ module.exports = function(grunt) {
             });
         });
     }
-    
+
     function deleteStreams(streamNames, waitTime) {
         console.log('Deleting streams ' + streamNames);
         return Q.allSettled(streamNames.map(function(streamName) {
@@ -204,13 +209,17 @@ module.exports = function(grunt) {
     }
 
     grunt.registerMultiTask('streams', 'controls Kinesis e2e streams', function() {
+        var auth = grunt.option('awsAuth') || path.join(process.env.HOME, '.aws.json');
         var done = this.async();
         var options = this.options({
             waitTime: 5000,
             streams: ['e2eTimeStream', 'e2eWatchmanStream'],
             tables: ['e2eTimeStreamApplication', 'e2eWatchmanStreamApplication']
         });
+        var region = grunt.option('region') || 'us-east-1';
         var target = this.target;
+
+        initAWS(auth, region);
 
         switch(target) {
         case 'create':
